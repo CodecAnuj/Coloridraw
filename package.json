@@ -9,11 +9,12 @@
     "check-types": "turbo run check-types"
   },
   "devDependencies": {
+    "@types/node": "^22.15.30",
     "prettier": "^3.5.3",
     "turbo": "^2.5.4",
     "typescript": "5.8.2"
   },
-  "packageManager": "pnpm@9.0.0",
+  "packageManager": "pnpm@10.11.1",
   "engines": {
     "node": ">=18"
   }
