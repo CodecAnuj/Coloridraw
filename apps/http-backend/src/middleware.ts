@@ -18,5 +18,5 @@ export function middleware(req: Request, res: Response, next: NextFunction) {
     res.status(403).json({
       message: "Unauthorized",
     });
-  } 
+  }
 }

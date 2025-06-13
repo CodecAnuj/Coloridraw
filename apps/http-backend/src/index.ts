@@ -7,18 +7,25 @@ import {
   SigninSchema,
   CreateRoomSchema,
 } from "@repo/common/types";
+import { prismaClient } from "@repo/db/client";
 
 const app = express();
 
 app.post("/singup", (req, res) => {
-  const data = CreateUserSchema.safeParse(req.body);
-  if (!data.success) {
+  const ParsedData = CreateUserSchema.safeParse(req.body);
+  if (!ParsedData.success) {
     res.json({
       message: "Incorrect inputs",
     });
     return;
   }
-
+  const createUser = prismaClient.user.create({
+    data: {
+      email: ParsedData.data.username,
+      password: ParsedData.data.password,
+      name: ParsedData.data.name,
+    },
+  })
   //db call
   res.json({
     UserId: "123",
