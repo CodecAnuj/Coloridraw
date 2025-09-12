@@ -8,16 +8,18 @@
     "dev": "pnpm run build && pnpm run start"
   },
   "dependencies": {
+    "@repo/db": "workspace:*",
+    "bcrypt": "^6.0.0",
     "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "@repo/db": "workspace:*"
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
-    "@types/jsonwebtoken": "^9.0.9",
-    "@repo/typescript-config": "workspace:*",
-    "@types/express": "^5.0.2",
     "@repo/backend-common": "workspace:*",
-    "@repo/common": "workspace:*"
+    "@repo/common": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/bcrypt": "^6.0.0",
+    "@types/express": "^5.0.2",
+    "@types/jsonwebtoken": "^9.0.9"
   },
   "keywords": [],
   "author": "",
