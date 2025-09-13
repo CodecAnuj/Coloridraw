@@ -14,89 +14,129 @@ const app = express();
 app.use(express.json());
 
 app.post("/signup", async (req, res) => {
-  const ParsedData = CreateUserSchema.safeParse(req.body);
-  if (!ParsedData.success) {
-    res.json({
-      message: "Incorrect inputs",
-    });
-    return;
+  // 1. validate input
+  const parse = CreateUserSchema.safeParse(req.body);
+  if (!parse.success) {
+    return res.status(400).json({ message: "Invalid input format" });
   }
 
-  const password = req.body.password;
-  // 1. Hash the password (bcrypt automatically salts)
-  const hasedPassword = await bcrypt.hash(password, 10);
+  const { username, password, name } = parse.data;
 
   try {
+    // 2. Check if user already exists
+    const existingUser = await prismaClient.user.findUnique({
+      where: {
+        username: username,
+      },
+    });
+    if (existingUser) {
+      return res.status(409).json({
+        message: res.status(409).json({ message: "User already exists" }),
+      });
+    }
+
+    // 3. Hash the password (bcrypt automatically salts)
+    const hasedPassword = await bcrypt.hash(password, 10);
+
     // 2. Store hash in DB
     const user = await prismaClient.user.create({
       data: {
-        email: ParsedData.data?.username,
+        username: username,
         password: hasedPassword,
-        name: ParsedData.data.name,
+        name: name,
       },
     });
-    res.json({
-      UserId: user.id,
+    res.status(201).json({
+      message: "User created successfully",
+      userId: user.id,
     });
-  } catch (e) {
-    res.status(411).json({
-      message: "User already exists with this username",
+  } catch (err) {
+    console.error("Signup error:", err);
+    res.status(500).json({
+      message: "Internal server error",
     });
   }
 });
 
 app.post("/signin", async (req, res) => {
-  const ParsedData = SigninSchema.safeParse(req.body);
-  if (!ParsedData.success) {
+  // 1. validate input
+  const parse = SigninSchema.safeParse(req.body);
+  if (!parse.success) {
+    return res.status(400).json({ message: "Invalid input format" });
+  }
+
+  const { username, password } = parse.data;
+
+  try {
+    // 2. Find user by usenamer
+    const user = await prismaClient.user.findFirst({
+      where: {
+        username: username,
+      },
+    });
+
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // 3. Compare plain password with hashed password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // 4. Generate token
+    const token = jwt.sign(
+      {
+        userId: user?.id,
+      },
+      JWT_SECRET,
+      {
+        expiresIn: "1h", // ⏳ Token expiry
+      }
+    );
+
     res.json({
-      message: "Incorrect inputs",
+      token,
     });
-    return;
-  }
-
-  const password = req.body
-  // 1. Find user by email
-  const user = await prismaClient.user.findFirst({
-    where: {
-      email: ParsedData.data.username,
-    },
-  });
-
-  if (!user) {
-    res.status(401).json({
-      message: "Invalid credentials",
+  } catch (err) {
+    console.error("Signin error:", err);
+    res.status(500).json({
+      message: "Internal server error",
     });
-    return;
   }
-
-  // 2. Compare plain password with hashed password
-  const isMatch = await bcrypt.compare(password, user.password)
-
-  const token = jwt.sign(
-    {
-      userId: user?.id,
-    },
-    JWT_SECRET
-  );
-
-  res.json({
-    token,
-  });
 });
 
-app.post("/room", middleware, (req, res) => {
-  const data = CreateRoomSchema.safeParse(req.body);
-  if (!data.success) {
-    res.json({
-      message: "Incorrect inputs",
-    });
-    return;
+app.post("/room", middleware, async (req, res) => {
+  const parse = CreateRoomSchema.safeParse(req.body);
+  if (!parse.success) {
+    return res.status(400).json({ message: "Invalid input format" });
   }
 
-  // db call
-  res.json({
-    roomId: "123",
-  });
+  const { slug } = parse.data;
+  const userId = req.userId as string;
+
+  try {
+    const room = await prismaClient.room.create({
+      data: {
+        slug: slug,
+        adminId: userId,
+      },
+    });
+
+    res.status(201).json({
+      message: "Room created successfuly",
+      roomId: room.id,
+      slug: room.slug,
+    });
+  } catch (err: any) {
+    if (err.code === "P2002") {
+      // Prisma unique constraint error (slug duplicate)
+      return res.status(409).json({ message: "Slug already exists" });
+    }
+    console.error("Room creation error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 app.listen(3001);
